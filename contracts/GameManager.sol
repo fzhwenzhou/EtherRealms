@@ -21,7 +21,7 @@ contract GameManager is Ownable {
     GuildManager public guildManager;
 
     uint8 public constant MAX_ENERGY = 5;
-    uint256 public constant ENERGY_REGEN_TIME = 300; // 5 min for PoC (24h in prod)
+    uint256 public constant ENERGY_REGEN_TIME = 10; // 10s for PoC (24h in prod)
     uint256 public constant ITEM_COST = 50 ether;     // 50 ERGOLD (18 decimals)
 
     // Monster definitions
