@@ -213,7 +213,7 @@ contract GameManager is Ownable {
 
         // Turns to kill monster
         uint16 turnsToKill = (m.hp + playerDmg - 1) / playerDmg;
-        uint16 damageTaken = monsterDmg * (turnsToKill > 1 ? turnsToKill - 1 : 0);
+        uint256 damageTaken = uint256(monsterDmg) * (turnsToKill > 1 ? turnsToKill - 1 : 0);
 
         // Add randomness factor (±20%)
         uint16 randomFactor = uint16(80 + (seed % 41)); // 80-120
@@ -227,7 +227,7 @@ contract GameManager is Ownable {
         if (damageTaken < c.hp) {
             // Victory
             victory = true;
-            newHp = c.hp - damageTaken;
+            newHp = c.hp - uint16(damageTaken);
             xpGain = m.xpReward;
             goldGain = m.goldReward;
 
