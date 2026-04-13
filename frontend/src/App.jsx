@@ -112,10 +112,34 @@ function App() {
   // ─── Real Wallet Connection ─────────────────────────
   const connectWallet = async () => {
     if (!window.ethereum) {
-      showNotification('MetaMask not detected. Try Demo Mode to explore the interface!', 'error');
+      showNotification('MetaMask not detected. Please install MetaMask!', 'error');
       return;
     }
     try {
+      // Request to switch to Sepolia testnet (chainId: 11155111)
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }], // 0xaa36a7 is 11155111 in hex (Sepolia)
+        });
+      } catch (switchError) {
+        // If the chain doesn't exist, add it
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0xaa36a7',
+              chainName: 'Sepolia',
+              rpcUrls: ['https://rpc.sepolia.org'],
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              blockExplorerUrls: ['https://sepolia.etherscan.io'],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+
       const prov = new ethers.BrowserProvider(window.ethereum);
       await prov.send('eth_requestAccounts', []);
       const sign = await prov.getSigner();
@@ -132,9 +156,9 @@ function App() {
       const guildManager = new ethers.Contract(CONTRACT_ADDRESSES.GuildManager, GuildManagerABI.abi, sign);
 
       setContracts({ characterNFT, itemNFT, goldToken, gameManager, guildManager });
-      showNotification('Wallet connected!');
+      showNotification('Wallet connected to Sepolia testnet!');
     } catch (err) {
-      showNotification(err.message || 'Connection failed', 'error');
+      showNotification(err.message || 'Failed to connect to Sepolia testnet', 'error');
     }
   };
 
@@ -274,7 +298,7 @@ function App() {
             maxLength={32}
           />
           <button className="btn btn-primary" onClick={mintCharacter} disabled={loading}>
-            {loading ? <><span className="spinner" /> Minting...</> : demoMode ? 'Create Character (Demo)' : 'Mint Character (0.01 ETH)'}
+            {loading ? <><span className="spinner" /> Minting...</> : 'Mint Character (0.01 ETH)'}
           </button>
         </div>
         {notification && <Notification {...notification} />}
