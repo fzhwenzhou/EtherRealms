@@ -10,7 +10,11 @@ const MONSTERS = [
 function GameActions({ contracts, charId, energy, loading, onAction, showNotification }) {
   const handleExplore = () => {
     onAction(async () => {
-      const tx = await contracts.gameManager.explore(charId);
+      // Estimate gas and add a safety buffer because on-chain randomness
+      // (item drops) can make the actual gas usage higher than the estimator.
+      const gasLimit = 600000n;
+
+      const tx = await contracts.gameManager.explore(charId, { gasLimit });
       showNotification('Exploring the wilderness...');
       await tx.wait();
       showNotification('Exploration complete! Check your rewards.');
@@ -19,7 +23,10 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
 
   const handleFight = (monsterType) => {
     onAction(async () => {
-      const tx = await contracts.gameManager.fightMonster(charId, monsterType);
+      // Similar gas buffering as explore: combat may mint items on victory
+      const gasLimit = 800000n;
+
+      const tx = await contracts.gameManager.fightMonster(charId, monsterType, { gasLimit });
       showNotification(`Fighting ${MONSTERS[monsterType].name}...`);
       const receipt = await tx.wait();
 
