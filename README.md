@@ -3,6 +3,7 @@
 A blockchain-based MMORPG proof of concept built on the Ethereum Sepolia testnet, demonstrating on-chain game mechanics including character NFTs, item system, gold economy, combat, and guild governance.
 
 ## Group Members
+
 - Fang Zihao (122090106)
 - Liang Ruilan (122090308)
 - Xu Penggan (122090625)
@@ -12,6 +13,7 @@ A blockchain-based MMORPG proof of concept built on the Ethereum Sepolia testnet
 EtherRealms implements a minimal MMORPG game using Solidity smart contracts on the Ethereum Sepolia Testnet. The project focuses on verifying core mechanisms: on-chain shared world state, NFT characters/items, player interaction, persistent progress, and guild governance.
 
 ### Core Features
+
 1. **Character System (ERC-721)** – Mint unique character NFTs with on-chain attributes (level, XP, HP, STR, DEF)
 2. **Item System (ERC-721)** – Weapons, armor, and potions with 5 rarity tiers and ownership history tracking
 3. **Gold Economy (ERC-20)** – In-game currency earned through gameplay, spent on items and guild treasury
@@ -21,18 +23,19 @@ EtherRealms implements a minimal MMORPG game using Solidity smart contracts on t
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
+| Component       | Technology                         |
+| --------------- | ---------------------------------- |
 | Smart Contracts | Solidity 0.8.24, OpenZeppelin v5.0 |
-| Dev Framework | Hardhat |
-| Testing | Hardhat Test (Mocha + Chai) |
-| Frontend | React 18, Vite 5, ethers.js v6 |
-| Wallet | MetaMask |
-| Testnet | Ethereum Sepolia |
+| Dev Framework   | Hardhat                            |
+| Testing         | Hardhat Test (Mocha + Chai)        |
+| Frontend        | React 18, Vite 5, ethers.js v6     |
+| Wallet          | MetaMask                           |
+| Testnet         | Ethereum Sepolia                   |
 
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js >= 18
 - MetaMask browser extension
 - Sepolia testnet ETH (from a faucet)
@@ -60,6 +63,7 @@ npm run test
 ```
 
 All 24 tests should pass:
+
 ```
   EtherRealms
     CharacterNFT (5 tests)
@@ -179,19 +183,24 @@ etherrealms/
 
 The PoC reviewer noted that the original proposal looked like an "on-chain RPG" rather than a project designed around MMORPG structures. We addressed this by implementing:
 
-| MMORPG Structure | Implementation |
-|---|---|
-| Persistent shared world | Global `worldEvents` array, `getAllPlayers()`, `leaderboard()` |
-| Long-term player identity | One character per address, `ActionRecord` history, permanent progression |
-| Traceable asset histories | `ItemNFT.ownershipHistory`, `CharacterNFT.actionHistory` |
-| Guild governance | `GuildManager` with treasury, proposals, on-chain voting |
-| Player-driven economy | ERC-20 gold earned through gameplay, spent on items/healing/treasury |
+| MMORPG Structure          | Implementation                                                            |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Persistent shared world   | Global `worldEvents` array, `getAllPlayers()`, `leaderboard()`      |
+| Long-term player identity | One character per address,`ActionRecord` history, permanent progression |
+| Traceable asset histories | `ItemNFT.ownershipHistory`, `CharacterNFT.actionHistory`              |
+| Guild governance          | `GuildManager` with treasury, proposals, on-chain voting                |
+| Player-driven economy     | ERC-20 gold earned through gameplay, spent on items/healing/treasury      |
 
 ## Known Limitations
+
 - **Randomness**: Uses pseudo-random (blockhash) – upgradeable to Chainlink VRF
 - **Gas Costs**: Free on Sepolia; production would need Layer 2 deployment
 - **Scalability**: Leaderboard uses O(n²) sort; production needs off-chain indexing
 - **No PvP**: Current version is PvE only
 
 ## License
+
 MIT
+
+## TODOs
+1. On the real ETH chain, establish a Uniswap pool to exchange ETH with ETHGOLD.

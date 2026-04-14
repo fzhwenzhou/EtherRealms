@@ -240,7 +240,7 @@ function App() {
       <div className="game-layout">
         {/* Left: Character Panel */}
         <div>
-          <CharacterPanel character={character} energy={energy} charId={charId} />
+          <CharacterPanel character={character} energy={energy} charId={charId} contracts={contracts} />
         </div>
 
         {/* Center: Game Actions */}
@@ -272,12 +272,15 @@ function App() {
               onAction={handleAction}
               showNotification={showNotification}
               goldBalance={goldBalance}
+              character={character}
             />
           )}
           {activeTab === 'market' && (
             <Marketplace
               contracts={contracts}
               account={account}
+              charId={charId}
+              character={character}
               loading={loading}
               onAction={handleAction}
               showNotification={showNotification}

@@ -12,7 +12,7 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
     onAction(async () => {
       // Estimate gas and add a safety buffer because on-chain randomness
       // (item drops) can make the actual gas usage higher than the estimator.
-      const gasLimit = 600000n;
+      const gasLimit = 800000n;
 
       const tx = await contracts.gameManager.explore(charId, { gasLimit });
       showNotification('Exploring the wilderness...');
@@ -53,7 +53,7 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
       const tx = await contracts.gameManager.rest(charId);
       showNotification('Resting at the inn...');
       await tx.wait();
-      showNotification('Fully healed!');
+      showNotification('Fully healed and energy restored!');
     });
   };
 
@@ -108,7 +108,7 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
       <div className="card">
         <h2>&#128716; Rest</h2>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Rest at the inn to fully restore HP. Costs 10 ERGOLD.
+          Rest at the inn to restore HP and recover energy. Costs 10 ERGOLD.
         </p>
         <button
           className="btn btn-warning"

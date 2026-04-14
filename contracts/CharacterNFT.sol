@@ -179,57 +179,17 @@ contract CharacterNFT is ERC721, Ownable {
         require(tokenId > 0 && tokenId <= _nextTokenId, "CharacterNFT: invalid id");
         CharacterStats memory c = characters[tokenId];
 
-        // Generate on-chain SVG
-        string memory svg = string.concat(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" style="background:#1a2332">',
-            '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fbbf24"/><stop offset="100%" style="stop-color:#f97316"/></linearGradient></defs>',
-            '<rect width="300" height="400" rx="12" fill="#1a2332" stroke="#3b82f6" stroke-width="2"/>',
-            '<text x="150" y="40" text-anchor="middle" fill="url(#g)" font-size="20" font-weight="bold" font-family="serif">',
-            c.name,
-            '</text>',
-            '<text x="150" y="65" text-anchor="middle" fill="#8b5cf6" font-size="14" font-family="sans-serif">Level ',
-            Strings.toString(c.level),
-            '</text>',
-            _generateCharSvgBody(c, tokenId),
-            '</svg>'
-        );
+        // Generate on-chain SVG with procedurally generated avatar
+        string memory avatarSvg = _generateAvatarSvg(tokenId, c.name);
 
         string memory json = string.concat(
             '{"name":"', c.name,
-            '","description":"EtherRealms Character NFT - Level ', Strings.toString(c.level),
-            '","image":"data:image/svg+xml;base64,', Base64.encode(bytes(svg)),
-            '","attributes":[',
-            '{"trait_type":"Level","value":', Strings.toString(c.level), '},',
-            '{"trait_type":"HP","value":', Strings.toString(c.hp), '},',
-            '{"trait_type":"Max HP","value":', Strings.toString(c.maxHp), '},',
-            '{"trait_type":"Strength","value":', Strings.toString(c.strength), '},',
-            '{"trait_type":"Defense","value":', Strings.toString(c.defense), '},',
-            '{"trait_type":"XP","value":', Strings.toString(c.xp), '}]}'
+            '","description":"EtherRealms Character NFT",',
+            '"image":"data:image/svg+xml;base64,', Base64.encode(bytes(avatarSvg)),
+            '"}'
         );
 
         return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
-    }
-
-    function _generateCharSvgBody(CharacterStats memory c, uint256 tokenId) internal pure returns (string memory) {
-        uint256 hpPct = (uint256(c.hp) * 200) / uint256(c.maxHp);
-        return string.concat(
-            // Character pixel art body
-            '<rect x="125" y="90" width="50" height="50" rx="25" fill="#8b5cf6"/>',
-            '<text x="150" y="122" text-anchor="middle" font-size="30">',
-            unicode'⚔️',
-            '</text>',
-            '<rect x="115" y="150" width="70" height="80" rx="8" fill="#3b82f6"/>',
-            // HP bar
-            '<text x="40" y="270" fill="#94a3b8" font-size="12" font-family="sans-serif">HP</text>',
-            '<rect x="40" y="278" width="220" height="12" rx="6" fill="#0a0e17"/>',
-            '<rect x="40" y="278" width="', Strings.toString(hpPct),
-            '" height="12" rx="6" fill="#10b981"/>',
-            // Stats
-            '<text x="40" y="320" fill="#ef4444" font-size="13" font-family="sans-serif">STR: ', Strings.toString(c.strength), '</text>',
-            '<text x="160" y="320" fill="#3b82f6" font-size="13" font-family="sans-serif">DEF: ', Strings.toString(c.defense), '</text>',
-            '<text x="40" y="345" fill="#f59e0b" font-size="13" font-family="sans-serif">XP: ', Strings.toString(c.xp), '</text>',
-            '<text x="40" y="370" fill="#94a3b8" font-size="11" font-family="sans-serif">Token #', Strings.toString(tokenId), '</text>'
-        );
     }
 
     // ─── Internal ─────────────────────────────────────
@@ -249,5 +209,135 @@ contract CharacterNFT is ERC721, Ownable {
             goldGained: goldGained
         }));
         emit ActionRecorded(tokenId, actionType, uint64(block.timestamp));
+    }
+
+    function _getAvatar(uint256 tokenId) internal pure returns (string memory) {
+        // Array of avatar emojis
+        string[10] memory avatars = [
+            unicode'⚔️',  // Sword
+            unicode'🛡️',  // Shield
+            unicode'🗡️',  // Dagger
+            unicode'🏹',  // Bow
+            unicode'👑',  // Crown
+            unicode'🐉',  // Dragon
+            unicode'🦁',  // Lion
+            unicode'⚡',  // Lightning
+            unicode'🔥',  // Fire
+            unicode'❄️'   // Frost
+        ];
+        
+        // Pseudo-random selection based on tokenId
+        uint256 index = tokenId % 10;
+        return avatars[index];
+    }
+
+    function _generateAvatarSvg(uint256 tokenId, string memory charName) internal pure returns (string memory) {
+        // Generate colors from tokenId
+        string memory bgColor = _getColorFromSeed(tokenId, 0);
+        string memory primaryColor = _getColorFromSeed(tokenId, 1);
+        string memory accentColor = _getColorFromSeed(tokenId, 2);
+        
+        // Start building SVG
+        string memory svg = string.concat(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420" style="background:#0f1419">',
+            '<defs>',
+            '<linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">',
+            '<stop offset="0%" style="stop-color:#1a2f4d;stop-opacity:1" />',
+            '<stop offset="100%" style="stop-color:#0f1419;stop-opacity:1" />',
+            '</linearGradient>',
+            '</defs>',
+            '<rect width="320" height="420" fill="url(#bgGrad)"/>',
+            '<rect width="320" height="420" rx="20" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.6"/>'
+        );
+        
+        // Add avatar circle with background color
+        svg = string.concat(
+            svg,
+            '<circle cx="160" cy="120" r="70" fill="', bgColor, '" opacity="0.9"/>',
+            '<circle cx="160" cy="120" r="70" fill="none" stroke="', primaryColor, '" stroke-width="3" opacity="0.5"/>'
+        );
+        
+        // Generate improved pixel pattern grid
+        svg = string.concat(svg, _generatePixelPattern(tokenId, primaryColor, accentColor, 75, 35, 17));
+        
+        // Add character name at bottom
+        svg = string.concat(
+            svg,
+            '<text x="160" y="350" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#e0e7ff">',
+            charName,
+            '</text>'
+        );
+        
+        svg = string.concat(svg, '</svg>');
+        
+        return svg;
+    }
+
+    function _generatePixelPattern(uint256 seed, string memory color1, string memory color2, uint256 startX, uint256 startY, uint256 blockSize) internal pure returns (string memory) {
+        string memory pattern = '';
+        uint256 hash = uint256(keccak256(abi.encodePacked(seed)));
+        
+        // 6x6 grid with symmetry for better aesthetics
+        for (uint256 row = 0; row < 6; row++) {
+            for (uint256 col = 0; col < 6; col++) {
+                uint256 bitIndex = (row * 6 + col);
+                uint256 bit = (hash >> (bitIndex % 256)) & 1;
+                
+                // Create symmetry (mirror left-right for better appearance)
+                if (col > 2) {
+                    bit = (hash >> ((row * 6 + (5 - col)) % 256)) & 1;
+                }
+                
+                // Skip center rows for face area
+                if ((row == 2 || row == 3) && (col == 2 || col == 3)) continue;
+                
+                string memory fillColor = bit == 1 ? color1 : color2;
+                uint256 x = startX + (col * blockSize);
+                uint256 y = startY + (row * blockSize);
+                uint256 opacity = bit == 1 ? 90 : 45;
+                
+                pattern = string.concat(
+                    pattern,
+                    '<rect x="', Strings.toString(x), '" y="', Strings.toString(y), 
+                    '" width="', Strings.toString(blockSize), '" height="', Strings.toString(blockSize),
+                    '" fill="', fillColor, '" opacity="0.', Strings.toString(opacity), '" rx="2"/>'
+                );
+            }
+        }
+        
+        // Add improved facial features
+        pattern = string.concat(
+            pattern,
+            '<circle cx="145" cy="118" r="4" fill="#ffd700" opacity="0.9"/>',
+            '<circle cx="175" cy="118" r="4" fill="#ffd700" opacity="0.9"/>',
+            '<circle cx="145" cy="118" r="2.5" fill="#000"/>',
+            '<circle cx="175" cy="118" r="2.5" fill="#000"/>',
+            '<path d="M 145 135 Q 160 143 175 135" stroke="#ff69b4" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+        );
+        
+        return pattern;
+    }
+
+    function _getColorFromSeed(uint256 seed, uint256 offset) internal pure returns (string memory) {
+        // Array of nice colors for avatars
+        string[12] memory colors = [
+            '#FF6B6B',  // Red
+            '#4ECDC4',  // Teal
+            '#45B7D1',  // Blue
+            '#FFA07A',  // Light Salmon
+            '#98D8C8',  // Mint
+            '#F7DC6F',  // Yellow
+            '#BB8FCE',  // Purple
+            '#85C1E2',  // Light Blue
+            '#F8B739',  // Gold
+            '#52C779',  // Green
+            '#FF85B3',  // Pink
+            '#C3F0CA'   // Light Green
+        ];
+        
+        uint256 hash = uint256(keccak256(abi.encodePacked(seed, offset)));
+        uint256 colorIndex = hash % 12;
+        
+        return colors[colorIndex];
     }
 }

@@ -19,9 +19,10 @@ contract GameManager is Ownable {
     ItemNFT      public itemNFT;
     GoldToken    public goldToken;
     GuildManager public guildManager;
+    address public marketplace;
 
     uint8 public constant MAX_ENERGY = 5;
-    uint256 public constant ENERGY_REGEN_TIME = 10; // 10s for PoC (24h in prod)
+    uint256 public constant ENERGY_REGEN_TIME = 300; // 5min for PoC
     uint256 public constant ITEM_COST = 50 ether;     // 50 ERGOLD (18 decimals)
 
     // Monster definitions
@@ -86,6 +87,10 @@ contract GameManager is Ownable {
         xpTable[8] = 3800;
         xpTable[9] = 5800;
         xpTable[10] = 8500;
+    }
+
+    function setMarketplace(address _marketplace) external onlyOwner {
+        marketplace = _marketplace;
     }
 
     // ─── Registration ─────────────────────────────────
@@ -288,18 +293,19 @@ contract GameManager is Ownable {
     // ─── Rest (heal) ──────────────────────────────────
 
     /**
-     * @notice Rest to recover HP. Costs 10 ERGOLD.
+     * @notice Rest to recover HP and energy. Costs 10 ERGOLD.
      */
     function rest(uint256 charId) external {
         require(characterNFT.ownerOf(charId) == msg.sender, "GameManager: not owner");
         CharacterNFT.CharacterStats memory c = characterNFT.getCharacter(charId);
-        require(c.hp < c.maxHp, "GameManager: full HP");
+        require(c.hp < c.maxHp || c.energy < MAX_ENERGY, "GameManager: full HP and energy");
 
         uint256 cost = 10 ether; // 10 ERGOLD
         require(goldToken.balanceOf(msg.sender) >= cost, "GameManager: insufficient gold");
 
         goldToken.burnFrom(msg.sender, cost);
         characterNFT.updateStats(charId, c.level, c.xp, c.maxHp, c.maxHp, c.strength, c.defense);
+        characterNFT.setEnergy(charId, MAX_ENERGY, uint64(block.timestamp));
     }
 
     // ─── Equipment ────────────────────────────────────
@@ -322,6 +328,35 @@ contract GameManager is Ownable {
 
         characterNFT.recordAction(charId, 3, 0, 0, 0);
         emit ItemEquipped(msg.sender, charId, itemId);
+    }
+
+    /**
+     * @notice Unequip an item from a character.
+     */
+    function unequipItem(uint256 charId, uint256 itemId) external {
+        address charOwner = characterNFT.ownerOf(charId);
+        require(
+            msg.sender == charOwner || msg.sender == marketplace,
+            "GameManager: not authorized"
+        );
+
+        if (msg.sender == marketplace) {
+            require(itemNFT.ownerOf(itemId) == charOwner, "GameManager: item owner mismatch");
+        }
+
+        CharacterNFT.CharacterStats memory c = characterNFT.getCharacter(charId);
+        ItemNFT.Item memory item = itemNFT.getItem(itemId);
+
+        if (item.itemType == ItemNFT.ItemType.Weapon) {
+            require(c.equippedWeapon == itemId, "GameManager: weapon not equipped");
+            characterNFT.equipWeapon(charId, 0);
+        } else if (item.itemType == ItemNFT.ItemType.Armor) {
+            require(c.equippedArmor == itemId, "GameManager: armor not equipped");
+            characterNFT.equipArmor(charId, 0);
+        }
+
+        characterNFT.recordAction(charId, 3, 0, 0, 0);
+        emit ItemEquipped(msg.sender, charId, 0);
     }
 
     /**
@@ -515,6 +550,7 @@ contract GameManager is Ownable {
             if (rarity <= 2) name = "Minor Potion";
             else if (rarity <= 4) name = "Greater Potion";
             else name = "Elixir of Life";
+            power = uint16(20 * rarity + (seed >> 8) % (10 * rarity + 1)); // Potions heal more
         }
 
         itemNFT.mintItem(to, name, iType, power, rarity);

@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./ItemNFT.sol";
 import "./GoldToken.sol";
+import "./GameManager.sol";
+import "./CharacterNFT.sol";
 
 /**
  * @title Marketplace
@@ -15,6 +17,8 @@ import "./GoldToken.sol";
 contract Marketplace is Ownable {
     ItemNFT public itemNFT;
     GoldToken public goldToken;
+    CharacterNFT public characterNFT;
+    GameManager public gameManager;
 
     struct Listing {
         uint256 itemId;
@@ -41,8 +45,17 @@ contract Marketplace is Ownable {
         goldToken = GoldToken(_goldToken);
     }
 
+    function setCharacterNFT(address _characterNFT) external onlyOwner {
+        characterNFT = CharacterNFT(_characterNFT);
+    }
+
+    function setGameManager(address _gameManager) external onlyOwner {
+        gameManager = GameManager(_gameManager);
+    }
+
     /**
      * @notice List an item for sale. Seller must approve this contract first.
+     *         If the item is currently equipped, it will be unequipped first.
      * @param itemId The token ID of the item to sell
      * @param price  The price in ERGOLD (with 18 decimals, e.g. 50 ether = 50 ERGOLD)
      */
@@ -50,6 +63,22 @@ contract Marketplace is Ownable {
         require(itemNFT.ownerOf(itemId) == msg.sender, "Marketplace: not item owner");
         require(price > 0, "Marketplace: price must be > 0");
         require(itemToListing[itemId] == 0, "Marketplace: item already listed");
+
+        // Unequip item if it's currently equipped
+        if (address(characterNFT) != address(0) && address(gameManager) != address(0)) {
+            uint256 charId = characterNFT.playerCharacter(msg.sender);
+            if (charId > 0) {
+                CharacterNFT.CharacterStats memory c = characterNFT.getCharacter(charId);
+                ItemNFT.Item memory item = itemNFT.getItem(itemId);
+                
+                // Check if item is equipped and unequip it
+                if (item.itemType == ItemNFT.ItemType.Weapon && c.equippedWeapon == itemId) {
+                    gameManager.unequipItem(charId, itemId);
+                } else if (item.itemType == ItemNFT.ItemType.Armor && c.equippedArmor == itemId) {
+                    gameManager.unequipItem(charId, itemId);
+                }
+            }
+        }
 
         // Transfer item to marketplace for escrow
         itemNFT.transferFrom(msg.sender, address(this), itemId);

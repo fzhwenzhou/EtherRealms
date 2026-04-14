@@ -70,6 +70,12 @@ async function main() {
   await goldToken.setAuthorized(marketplaceAddr, true);
   console.log("Marketplace authorized on GoldToken");
 
+  // 9. Wire marketplace references for auto-unequip flow
+  await marketplace.setCharacterNFT(characterNFTAddr);
+  await marketplace.setGameManager(gameManagerAddr);
+  await gameManager.setMarketplace(marketplaceAddr);
+  console.log("Marketplace and GameManager references configured");
+
   console.log("\n--- Deployment Complete ---");
   console.log("Contract Addresses:");
   console.log(`  GoldToken:     ${goldTokenAddr}`);

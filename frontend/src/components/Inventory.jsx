@@ -5,7 +5,7 @@ const RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const ITEM_TYPE_NAMES = ['Weapon', 'Armor', 'Potion'];
 const ITEM_COST = 50; // 50 ERGOLD
 
-function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance }) {
+function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance, character }) {
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
@@ -50,6 +50,16 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
       showNotification('Equipping item...');
       await tx.wait();
       showNotification('Item equipped!');
+      await loadItems();
+    });
+  };
+
+  const handleUnequip = (itemId) => {
+    onAction(async () => {
+      const tx = await contracts.gameManager.unequipItem(charId, itemId);
+      showNotification('Unequipping item...');
+      await tx.wait();
+      showNotification('Item unequipped!');
       await loadItems();
     });
   };
@@ -123,9 +133,21 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
                       Use
                     </button>
                   ) : (
-                    <button className="btn btn-sm btn-primary" onClick={() => handleEquip(item.id)} disabled={loading}>
-                      Equip
-                    </button>
+                    <>
+                      {item.itemType === 0 && character?.equippedWeapon === item.id ? (
+                        <button className="btn btn-sm btn-success" onClick={() => handleUnequip(item.id)} disabled={loading}>
+                          Unequip
+                        </button>
+                      ) : item.itemType === 1 && character?.equippedArmor === item.id ? (
+                        <button className="btn btn-sm btn-success" onClick={() => handleUnequip(item.id)} disabled={loading}>
+                          Unequip
+                        </button>
+                      ) : (
+                        <button className="btn btn-sm btn-primary" onClick={() => handleEquip(item.id)} disabled={loading}>
+                          Equip
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

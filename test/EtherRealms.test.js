@@ -40,6 +40,9 @@ describe("EtherRealms", function () {
       await goldToken.getAddress()
     );
     await goldToken.setAuthorized(await marketplace.getAddress(), true);
+    await marketplace.setCharacterNFT(await characterNFT.getAddress());
+    await marketplace.setGameManager(await gameManager.getAddress());
+    await gameManager.setMarketplace(await marketplace.getAddress());
   });
 
   describe("CharacterNFT", function () {
@@ -202,7 +205,7 @@ describe("EtherRealms", function () {
       // We need to ensure we have enough: skip test cleanly if unlucky
       if (goldBal < ethers.parseEther("50")) {
         // Mine additional blocks so energy regenerates (10s per energy)
-        await ethers.provider.send("evm_increaseTime", [60]);
+        await ethers.provider.send("evm_increaseTime", [1500]);
         await ethers.provider.send("evm_mine", []);
         // Explore 5 more times
         for (let i = 0; i < 5; i++) {
@@ -296,7 +299,7 @@ describe("EtherRealms", function () {
         await gameManager.connect(player2).explore(2);
       }
       // Ensure enough gold by advancing time and exploring more if needed
-      await ethers.provider.send("evm_increaseTime", [60]);
+      await ethers.provider.send("evm_increaseTime", [1500]);
       await ethers.provider.send("evm_mine", []);
       for (let i = 0; i < 5; i++) {
         await gameManager.connect(player1).explore(1);
@@ -354,6 +357,21 @@ describe("EtherRealms", function () {
       const count = await marketplace.getActiveListingCount();
       expect(count).to.equal(0);
     });
+
+    it("should unequip an equipped item when listing", async function () {
+      await gameManager.connect(player1).buyItem(0);
+      const itemId = await itemNFT.getNextTokenId();
+
+      await gameManager.connect(player1).equipItem(1, itemId);
+      let char = await characterNFT.getCharacter(1);
+      expect(char.equippedWeapon).to.equal(itemId);
+
+      await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+      await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+      char = await characterNFT.getCharacter(1);
+      expect(char.equippedWeapon).to.equal(0);
+    });
   });
 
   describe("ItemNFT - Ownership History", function () {
@@ -363,7 +381,7 @@ describe("EtherRealms", function () {
       for (let i = 0; i < 5; i++) {
         await gameManager.connect(player1).explore(1);
       }
-      await ethers.provider.send("evm_increaseTime", [60]);
+      await ethers.provider.send("evm_increaseTime", [1500]);
       await ethers.provider.send("evm_mine", []);
       for (let i = 0; i < 5; i++) {
         await gameManager.connect(player1).explore(1);

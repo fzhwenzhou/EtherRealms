@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 const RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const ITEM_TYPE_NAMES = ['Weapon', 'Armor', 'Potion'];
 
-function Marketplace({ contracts, account, loading, onAction, showNotification, goldBalance }) {
+function Marketplace({ contracts, account, charId, character, loading, onAction, showNotification, goldBalance }) {
   const [listings, setListings] = useState([]);
   const [myItems, setMyItems] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -100,17 +100,32 @@ function Marketplace({ contracts, account, loading, onAction, showNotification, 
       return;
     }
     onAction(async () => {
+      const selectedItemId = parseInt(sellItemId);
+      const selectedItem = myItems.find((item) => item.id === selectedItemId);
+
+      // Ensure UI and on-chain character state stay consistent when selling equipped gear.
+      if (selectedItem && character && charId > 0) {
+        const isEquippedWeapon = selectedItem.itemType === 0 && character.equippedWeapon === selectedItemId;
+        const isEquippedArmor = selectedItem.itemType === 1 && character.equippedArmor === selectedItemId;
+
+        if (isEquippedWeapon || isEquippedArmor) {
+          const unequipTx = await contracts.gameManager.unequipItem(charId, selectedItemId);
+          showNotification('Unequipping item before listing...');
+          await unequipTx.wait();
+        }
+      }
+
       // First approve the marketplace to transfer the item
       const approveTx = await contracts.itemNFT.approve(
         await contracts.marketplace.getAddress(),
-        parseInt(sellItemId)
+        selectedItemId
       );
       showNotification('Approving item transfer...');
       await approveTx.wait();
 
       // Then list the item
       const listTx = await contracts.marketplace.listItem(
-        parseInt(sellItemId),
+        selectedItemId,
         ethers.parseEther(sellPrice)
       );
       showNotification('Listing item on marketplace...');
