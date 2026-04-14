@@ -7,9 +7,8 @@ const MONSTERS = [
   { name: 'Dark Knight', hp: 120, atk: 25, def: 15, xp: 120, gold: 60, emoji: '⚔️' },
 ];
 
-function GameActions({ contracts, charId, energy, loading, onAction, showNotification, demoMode }) {
+function GameActions({ contracts, charId, energy, loading, onAction, showNotification }) {
   const handleExplore = () => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.explore(charId);
       showNotification('Exploring the wilderness...');
@@ -19,7 +18,6 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
   };
 
   const handleFight = (monsterType) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.fightMonster(charId, monsterType);
       showNotification(`Fighting ${MONSTERS[monsterType].name}...`);
@@ -44,7 +42,6 @@ function GameActions({ contracts, charId, energy, loading, onAction, showNotific
   };
 
   const handleRest = () => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.rest(charId);
       showNotification('Resting at the inn...');

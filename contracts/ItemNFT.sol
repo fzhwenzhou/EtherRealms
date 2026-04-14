@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title ItemNFT
@@ -105,6 +107,75 @@ contract ItemNFT is ERC721, Ownable {
 
     function getNextTokenId() external view returns (uint256) {
         return _nextTokenId;
+    }
+
+    // ─── Token URI (on-chain SVG) ────────────────────
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(tokenId > 0 && tokenId <= _nextTokenId, "ItemNFT: invalid id");
+        Item memory item = items[tokenId];
+
+        string memory typeStr = _itemTypeString(item.itemType);
+        string memory rarityStr = _rarityString(item.rarity);
+        string memory rarityColor = _rarityColor(item.rarity);
+        string memory itemEmoji = _itemEmoji(item.itemType);
+
+        string memory svg = string.concat(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" style="background:#1a2332">',
+            '<rect width="250" height="250" rx="12" fill="#1a2332" stroke="', rarityColor, '" stroke-width="3"/>',
+            '<text x="125" y="80" text-anchor="middle" font-size="60">', itemEmoji, '</text>',
+            '<text x="125" y="130" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="bold" font-family="sans-serif">',
+            item.name, '</text>',
+            '<text x="125" y="155" text-anchor="middle" fill="', rarityColor, '" font-size="13" font-family="sans-serif">',
+            rarityStr, ' ', typeStr, '</text>',
+            '<text x="125" y="185" text-anchor="middle" fill="#fbbf24" font-size="14" font-family="sans-serif">Power: ',
+            Strings.toString(item.power), '</text>',
+            '<text x="125" y="230" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">Token #',
+            Strings.toString(tokenId), '</text>',
+            '</svg>'
+        );
+
+        string memory json = string.concat(
+            '{"name":"', item.name,
+            '","description":"EtherRealms Item - ', rarityStr, ' ', typeStr,
+            '","image":"data:image/svg+xml;base64,', Base64.encode(bytes(svg)),
+            '","attributes":[',
+            '{"trait_type":"Type","value":"', typeStr, '"},',
+            '{"trait_type":"Rarity","value":"', rarityStr, '"},',
+            '{"trait_type":"Power","value":', Strings.toString(item.power), '}]}'
+        );
+
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
+    }
+
+    function _itemTypeString(ItemType t) internal pure returns (string memory) {
+        if (t == ItemType.Weapon) return "Weapon";
+        if (t == ItemType.Armor) return "Armor";
+        return "Potion";
+    }
+
+    function _rarityString(uint8 r) internal pure returns (string memory) {
+        if (r == 1) return "Common";
+        if (r == 2) return "Uncommon";
+        if (r == 3) return "Rare";
+        if (r == 4) return "Epic";
+        if (r == 5) return "Legendary";
+        return "Unknown";
+    }
+
+    function _rarityColor(uint8 r) internal pure returns (string memory) {
+        if (r == 1) return "#9ca3af";
+        if (r == 2) return "#4ade80";
+        if (r == 3) return "#60a5fa";
+        if (r == 4) return "#a78bfa";
+        if (r == 5) return "#fbbf24";
+        return "#9ca3af";
+    }
+
+    function _itemEmoji(ItemType t) internal pure returns (string memory) {
+        if (t == ItemType.Weapon) return unicode"\u2694";
+        if (t == ItemType.Armor) return unicode"\u26E8";
+        return unicode"\u2697";
     }
 
     /**

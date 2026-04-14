@@ -98,7 +98,6 @@ contract GameManager is Ownable {
     }
 
     // ─── Energy System ────────────────────────────────
-    // Fix me
     function getAvailableEnergy(uint256 charId) public view returns (uint8) {
         CharacterNFT.CharacterStats memory c = characterNFT.getCharacter(charId);
         uint256 elapsed = block.timestamp - c.lastActionTime;
@@ -216,15 +215,20 @@ contract GameManager is Ownable {
         uint256 damageTaken = uint256(monsterDmg) * (turnsToKill > 1 ? turnsToKill - 1 : 0);
 
         // Add randomness factor (±20%)
-        uint16 randomFactor = uint16(80 + (seed % 41)); // 80-120
+        uint256 randomFactor = 80 + (seed % 41); // 80-120
         damageTaken = (damageTaken * randomFactor) / 100;
+
+        // Cap damageTaken to uint16 range to prevent overflow on cast
+        if (damageTaken > type(uint16).max) {
+            damageTaken = type(uint16).max;
+        }
 
         bool victory;
         uint16 newHp;
         uint32 xpGain = 0;
         uint256 goldGain = 0;
 
-        if (damageTaken < c.hp) {
+        if (damageTaken < uint256(c.hp)) {
             // Victory
             victory = true;
             newHp = c.hp - uint16(damageTaken);
@@ -265,7 +269,17 @@ contract GameManager is Ownable {
             _addWorldEvent(msg.sender, charId, 2, string.concat(c.name, " was defeated by ", m.name));
         }
 
-        int16 hpChange = int16(uint16(newHp)) - int16(c.hp);
+        // Safe hpChange calculation: use int32 intermediary to avoid int16 overflow
+        int32 hpDiff = int32(uint32(newHp)) - int32(uint32(c.hp));
+        // Clamp to int16 range
+        int16 hpChange;
+        if (hpDiff > int32(type(int16).max)) {
+            hpChange = type(int16).max;
+        } else if (hpDiff < int32(type(int16).min)) {
+            hpChange = type(int16).min;
+        } else {
+            hpChange = int16(hpDiff);
+        }
         characterNFT.recordAction(charId, 2, hpChange, xpGain, goldGain);
 
         emit CombatEvent(msg.sender, charId, monsterType, victory, xpGain, goldGain);

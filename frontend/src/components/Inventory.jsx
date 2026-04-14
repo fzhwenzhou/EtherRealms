@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ethers } from 'ethers';
 
 const RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const ITEM_TYPE_NAMES = ['Weapon', 'Armor', 'Potion'];
+const ITEM_COST = 50; // 50 ERGOLD
 
-function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance, demoMode, demoItems }) {
+function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance }) {
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
   const loadItems = useCallback(async () => {
-    if (demoMode) {
-      setItems(demoItems || []);
-      return;
-    }
     if (!contracts || !account) return;
     setLoadingItems(true);
     try {
       const nextId = Number(await contracts.itemNFT.getNextTokenId());
       const playerItems = [];
+      // getNextTokenId() returns the last minted ID, so valid IDs are 1..nextId
       for (let i = 1; i <= nextId; i++) {
         try {
           const owner = await contracts.itemNFT.ownerOf(i);
@@ -31,7 +30,7 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
             });
           }
         } catch {
-          // Burned or invalid
+          // Burned or invalid token - skip
         }
       }
       setItems(playerItems);
@@ -39,14 +38,13 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
       console.error('Failed to load items:', err);
     }
     setLoadingItems(false);
-  }, [contracts, account, demoMode, demoItems]);
+  }, [contracts, account]);
 
   useEffect(() => {
     loadItems();
   }, [loadItems]);
 
   const handleEquip = (itemId) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.equipItem(charId, itemId);
       showNotification('Equipping item...');
@@ -57,7 +55,6 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
   };
 
   const handleUsePotion = (itemId) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.usePotion(charId, itemId);
       showNotification('Using potion...');
@@ -68,7 +65,12 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
   };
 
   const handleBuy = (itemType) => {
-    if (demoMode) { onAction(() => {}); return; }
+    // Check balance before calling contract to provide better error messages
+    const balance = parseFloat(goldBalance);
+    if (balance < ITEM_COST) {
+      showNotification(`Not enough gold! Need ${ITEM_COST} but you have ${balance.toFixed(0)}. Explore or fight monsters to earn more!`, 'error');
+      return;
+    }
     onAction(async () => {
       const tx = await contracts.gameManager.buyItem(itemType);
       showNotification('Purchasing item...');

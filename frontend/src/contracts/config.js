@@ -3,6 +3,7 @@ import ItemNFTABI from './ItemNFT.json';
 import GoldTokenABI from './GoldToken.json';
 import GameManagerABI from './GameManager.json';
 import GuildManagerABI from './GuildManager.json';
+import MarketplaceABI from './Marketplace.json';
 import addresses from './addresses.json';
 
 // Default addresses for Hardhat local network
@@ -13,6 +14,7 @@ const CONTRACT_ADDRESSES = {
   GoldToken: addresses.GoldToken,
   GameManager: addresses.GameManager,
   GuildManager: addresses.GuildManager,
+  Marketplace: addresses.Marketplace || null,
 };
 
 export {
@@ -21,5 +23,6 @@ export {
   GoldTokenABI,
   GameManagerABI,
   GuildManagerABI,
+  MarketplaceABI,
   CONTRACT_ADDRESSES,
 };

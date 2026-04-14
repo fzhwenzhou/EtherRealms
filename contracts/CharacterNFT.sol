@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title CharacterNFT
@@ -169,6 +171,65 @@ contract CharacterNFT is ERC721, Ownable {
 
     function withdraw() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
+    }
+
+    // ─── Token URI (on-chain SVG) ────────────────────
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(tokenId > 0 && tokenId <= _nextTokenId, "CharacterNFT: invalid id");
+        CharacterStats memory c = characters[tokenId];
+
+        // Generate on-chain SVG
+        string memory svg = string.concat(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" style="background:#1a2332">',
+            '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fbbf24"/><stop offset="100%" style="stop-color:#f97316"/></linearGradient></defs>',
+            '<rect width="300" height="400" rx="12" fill="#1a2332" stroke="#3b82f6" stroke-width="2"/>',
+            '<text x="150" y="40" text-anchor="middle" fill="url(#g)" font-size="20" font-weight="bold" font-family="serif">',
+            c.name,
+            '</text>',
+            '<text x="150" y="65" text-anchor="middle" fill="#8b5cf6" font-size="14" font-family="sans-serif">Level ',
+            Strings.toString(c.level),
+            '</text>',
+            _generateCharSvgBody(c, tokenId),
+            '</svg>'
+        );
+
+        string memory json = string.concat(
+            '{"name":"', c.name,
+            '","description":"EtherRealms Character NFT - Level ', Strings.toString(c.level),
+            '","image":"data:image/svg+xml;base64,', Base64.encode(bytes(svg)),
+            '","attributes":[',
+            '{"trait_type":"Level","value":', Strings.toString(c.level), '},',
+            '{"trait_type":"HP","value":', Strings.toString(c.hp), '},',
+            '{"trait_type":"Max HP","value":', Strings.toString(c.maxHp), '},',
+            '{"trait_type":"Strength","value":', Strings.toString(c.strength), '},',
+            '{"trait_type":"Defense","value":', Strings.toString(c.defense), '},',
+            '{"trait_type":"XP","value":', Strings.toString(c.xp), '}]}'
+        );
+
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
+    }
+
+    function _generateCharSvgBody(CharacterStats memory c, uint256 tokenId) internal pure returns (string memory) {
+        uint256 hpPct = (uint256(c.hp) * 200) / uint256(c.maxHp);
+        return string.concat(
+            // Character pixel art body
+            '<rect x="125" y="90" width="50" height="50" rx="25" fill="#8b5cf6"/>',
+            '<text x="150" y="122" text-anchor="middle" font-size="30">',
+            unicode'⚔️',
+            '</text>',
+            '<rect x="115" y="150" width="70" height="80" rx="8" fill="#3b82f6"/>',
+            // HP bar
+            '<text x="40" y="270" fill="#94a3b8" font-size="12" font-family="sans-serif">HP</text>',
+            '<rect x="40" y="278" width="220" height="12" rx="6" fill="#0a0e17"/>',
+            '<rect x="40" y="278" width="', Strings.toString(hpPct),
+            '" height="12" rx="6" fill="#10b981"/>',
+            // Stats
+            '<text x="40" y="320" fill="#ef4444" font-size="13" font-family="sans-serif">STR: ', Strings.toString(c.strength), '</text>',
+            '<text x="160" y="320" fill="#3b82f6" font-size="13" font-family="sans-serif">DEF: ', Strings.toString(c.defense), '</text>',
+            '<text x="40" y="345" fill="#f59e0b" font-size="13" font-family="sans-serif">XP: ', Strings.toString(c.xp), '</text>',
+            '<text x="40" y="370" fill="#94a3b8" font-size="11" font-family="sans-serif">Token #', Strings.toString(tokenId), '</text>'
+        );
     }
 
     // ─── Internal ─────────────────────────────────────

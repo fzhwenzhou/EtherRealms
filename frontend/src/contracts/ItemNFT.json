@@ -1,4 +1,7 @@
 {
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ItemNFT",
+  "sourceName": "contracts/ItemNFT.sol",
   "abi": [
     {
       "inputs": [],
@@ -833,5 +836,9 @@
       "stateMutability": "nonpayable",
       "type": "function"
     }
-  ]
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
 }

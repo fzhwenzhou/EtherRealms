@@ -6,6 +6,7 @@ import {
   GoldTokenABI,
   GameManagerABI,
   GuildManagerABI,
+  MarketplaceABI,
   CONTRACT_ADDRESSES,
 } from './contracts/config';
 import CharacterPanel from './components/CharacterPanel';
@@ -14,52 +15,8 @@ import WorldEvents from './components/WorldEvents';
 import Leaderboard from './components/Leaderboard';
 import Inventory from './components/Inventory';
 import GuildPanel from './components/GuildPanel';
+import Marketplace from './components/Marketplace';
 import Notification from './components/Notification';
-
-// ─── Demo Mode Data ───────────────────────────────────
-// const DEMO_CHARACTER = {
-//   name: 'DemoHero',
-//   level: 3,
-//   xp: 310,
-//   hp: 95,
-//   maxHp: 120,
-//   strength: 19,
-//   defense: 11,
-//   equippedWeapon: 1,
-//   equippedArmor: 2,
-//   guildId: 1,
-//   energy: 4,
-// };
-
-// const DEMO_ITEMS = [
-//   { id: 1, name: 'Iron Sword', itemType: 0, power: 8, rarity: 2 },
-//   { id: 2, name: 'Leather Armor', itemType: 1, power: 6, rarity: 1 },
-//   { id: 3, name: 'Minor Potion', itemType: 2, power: 15, rarity: 1 },
-//   { id: 4, name: 'Steel Blade', itemType: 0, power: 18, rarity: 3 },
-// ];
-
-// const DEMO_EVENTS = [
-//   { id: 5, player: '0xf39Fd6...b922', characterId: 1, eventType: 0, message: 'DemoHero explored the wilderness', timestamp: Math.floor(Date.now()/1000) - 60 },
-//   { id: 4, player: '0xf39Fd6...b922', characterId: 1, eventType: 1, message: 'DemoHero defeated Goblin', timestamp: Math.floor(Date.now()/1000) - 120 },
-//   { id: 3, player: '0x70997...79C8', characterId: 2, eventType: 4, message: 'ShadowMage reached level 5', timestamp: Math.floor(Date.now()/1000) - 300 },
-//   { id: 2, player: '0xf39Fd6...b922', characterId: 1, eventType: 3, message: 'DemoHero found an item while exploring!', timestamp: Math.floor(Date.now()/1000) - 500 },
-//   { id: 1, player: '0x3C44Cd...6C62', characterId: 3, eventType: 5, message: "Guild 'Dragon Slayers' was founded!", timestamp: Math.floor(Date.now()/1000) - 800 },
-// ];
-
-// const DEMO_LEADERS = [
-//   { id: 2, name: 'ShadowMage', level: 5, xp: 980, owner: '0x70997...79C8' },
-//   { id: 1, name: 'DemoHero', level: 3, xp: 310, owner: '0xf39Fd6...b922' },
-//   { id: 3, name: 'IronKnight', level: 2, xp: 150, owner: '0x3C44Cd...6C62' },
-// ];
-
-// const DEMO_GUILD = {
-//   id: 1,
-//   name: 'Dragon Slayers',
-//   leader: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-//   treasury: '125',
-//   memberCount: 3,
-//   createdAt: Math.floor(Date.now()/1000) - 86400,
-// };
 
 function App() {
   const [provider, setProvider] = useState(null);
@@ -74,42 +31,11 @@ function App() {
   const [notification, setNotification] = useState(null);
   const [activeTab, setActiveTab] = useState('actions');
   const [mintName, setMintName] = useState('');
-  // const [demoMode, setDemoMode] = useState(false);
 
   const showNotification = useCallback((message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   }, []);
-
-  // ─── Demo Mode ──────────────────────────────────────
-  // const enterDemoMode = () => {
-  //   setDemoMode(true);
-  //   setAccount('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
-  //   setCharId(1);
-  //   setCharacter({ ...DEMO_CHARACTER });
-  //   setEnergy(DEMO_CHARACTER.energy);
-  //   setGoldBalance('185');
-  //   showNotification('Demo mode activated! Explore the interface freely.');
-  // };
-
-  // const demoAction = (msg) => {
-  //   setLoading(true);
-  //   showNotification(msg);
-  //   setTimeout(() => {
-  //     setLoading(false);
-  //     // Simulate stat changes
-  //     setCharacter(prev => ({
-  //       ...prev,
-  //       xp: prev.xp + Math.floor(Math.random() * 20 + 10),
-  //       hp: Math.max(1, prev.hp - Math.floor(Math.random() * 10)),
-  //     }));
-  //     setEnergy(prev => Math.max(0, prev - 1));
-  //     setGoldBalance(prev => String(parseInt(prev) + Math.floor(Math.random() * 15 + 5)));
-  //     showNotification('Action complete! (Demo)');
-  //   }, 1500);
-  // };
-
-  // ─── Real Wallet Connection ─────────────────────────
   const connectWallet = async () => {
     if (!window.ethereum) {
       showNotification('MetaMask not detected. Please install MetaMask!', 'error');
@@ -155,7 +81,17 @@ function App() {
       const gameManager = new ethers.Contract(CONTRACT_ADDRESSES.GameManager, GameManagerABI.abi, sign);
       const guildManager = new ethers.Contract(CONTRACT_ADDRESSES.GuildManager, GuildManagerABI.abi, sign);
 
-      setContracts({ characterNFT, itemNFT, goldToken, gameManager, guildManager });
+      // Marketplace contract (may not be deployed yet)
+      let marketplace = null;
+      if (CONTRACT_ADDRESSES.Marketplace) {
+        try {
+          marketplace = new ethers.Contract(CONTRACT_ADDRESSES.Marketplace, MarketplaceABI.abi, sign);
+        } catch (e) {
+          console.warn('Marketplace contract not available:', e);
+        }
+      }
+
+      setContracts({ characterNFT, itemNFT, goldToken, gameManager, guildManager, marketplace });
       showNotification('Wallet connected to Sepolia testnet!');
     } catch (err) {
       showNotification(err.message || 'Failed to connect to Sepolia testnet', 'error');
@@ -163,7 +99,7 @@ function App() {
   };
 
   const loadCharacter = useCallback(async () => {
-    // if (demoMode || !contracts || !account) return;
+    if (!contracts || !account) return;
     try {
       const id = await contracts.characterNFT.playerCharacter(account);
       const numId = Number(id);
@@ -212,14 +148,10 @@ function App() {
       showNotification('Please enter a character name', 'error');
       return;
     }
-    // if (demoMode) {
-    //   setCharacter({ ...DEMO_CHARACTER, name: mintName });
-    //   setCharId(1);
-    //   setEnergy(5);
-    //   setGoldBalance('0');
-    //   showNotification('Character minted! (Demo)');
-    //   return;
-    // }
+    if (!contracts) {
+      showNotification('Wallet not connected', 'error');
+      return;
+    }
     setLoading(true);
     try {
       const tx = await contracts.characterNFT.mintCharacter(mintName, {
@@ -236,10 +168,6 @@ function App() {
   };
 
   const handleAction = async (actionFn) => {
-    // if (demoMode) {
-    //   demoAction('Processing action...');
-    //   return;
-    // }
     setLoading(true);
     try {
       await actionFn();
@@ -258,19 +186,9 @@ function App() {
           <h1>EtherRealms</h1>
           <p className="subtitle">Ethereum Sepolia MMORPG Proof of Concept</p>
           <p>A blockchain-powered persistent shared world</p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-            <button className="btn btn-primary" onClick={connectWallet}>
-              Connect MetaMask
-            </button>
-            {/*
-            <button className="btn btn-warning" onClick={enterDemoMode}>
-              Demo Mode
-            </button>
-            */}
-          </div>
-          <p className="subtitle" style={{ marginTop: 16, fontSize: 12 }}>
-            No MetaMask?
-          </p>
+          <button className="btn btn-primary" onClick={connectWallet} style={{ marginTop: 8 }}>
+            Connect MetaMask
+          </button>
         </div>
         {notification && <Notification {...notification} />}
       </div>
@@ -330,6 +248,7 @@ function App() {
           <div className="tabs">
             <button className={`tab ${activeTab === 'actions' ? 'active' : ''}`} onClick={() => setActiveTab('actions')}>Actions</button>
             <button className={`tab ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>Inventory</button>
+            <button className={`tab ${activeTab === 'market' ? 'active' : ''}`} onClick={() => setActiveTab('market')}>Market</button>
             <button className={`tab ${activeTab === 'guild' ? 'active' : ''}`} onClick={() => setActiveTab('guild')}>Guild</button>
             <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>Leaderboard</button>
           </div>
@@ -349,6 +268,16 @@ function App() {
               contracts={contracts}
               account={account}
               charId={charId}
+              loading={loading}
+              onAction={handleAction}
+              showNotification={showNotification}
+              goldBalance={goldBalance}
+            />
+          )}
+          {activeTab === 'market' && (
+            <Marketplace
+              contracts={contracts}
+              account={account}
               loading={loading}
               onAction={handleAction}
               showNotification={showNotification}

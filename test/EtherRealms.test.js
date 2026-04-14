@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("EtherRealms", function () {
-  let goldToken, characterNFT, itemNFT, guildManager, gameManager;
+  let goldToken, characterNFT, itemNFT, guildManager, gameManager, marketplace;
   let owner, player1, player2, player3;
 
   beforeEach(async function () {
@@ -33,6 +33,13 @@ describe("EtherRealms", function () {
     await characterNFT.setGameManager(gmAddr);
     await itemNFT.setGameManager(gmAddr);
     await guildManager.setGameManager(gmAddr);
+
+    const Marketplace = await ethers.getContractFactory("Marketplace");
+    marketplace = await Marketplace.deploy(
+      await itemNFT.getAddress(),
+      await goldToken.getAddress()
+    );
+    await goldToken.setAuthorized(await marketplace.getAddress(), true);
   });
 
   describe("CharacterNFT", function () {
@@ -78,7 +85,7 @@ describe("EtherRealms", function () {
     it("should only allow minter to mint", async function () {
       await expect(
         goldToken.connect(player1).mint(player1.address, ethers.parseEther("100"))
-      ).to.be.revertedWith("GoldToken: caller is not the minter");
+      ).to.be.revertedWith("GoldToken: caller is not authorized");
     });
   });
 
@@ -153,40 +160,71 @@ describe("EtherRealms", function () {
   describe("GameManager - Rest", function () {
     beforeEach(async function () {
       await characterNFT.connect(player1).mintCharacter("Healer", { value: ethers.parseEther("0.01") });
-      // Fight to lose HP and gain gold
-      await gameManager.connect(player1).fightMonster(1, 0);
+      // Fight Dark Knight to guarantee HP loss
+      await gameManager.connect(player1).fightMonster(1, 2);
     });
 
     it("should restore HP when resting", async function () {
       const charBefore = await characterNFT.getCharacter(1);
-      if (charBefore.hp < charBefore.maxHp) {
-        const goldBal = await goldToken.balanceOf(player1.address);
-        if (goldBal >= ethers.parseEther("10")) {
-          await gameManager.connect(player1).rest(1);
-          const charAfter = await characterNFT.getCharacter(1);
-          expect(charAfter.hp).to.equal(charAfter.maxHp);
-        }
-      }
+      // After fighting Dark Knight, HP should be reduced
+      expect(charBefore.hp).to.be.lessThan(charBefore.maxHp);
+
+      // Explore to earn enough gold for rest (10 ERGOLD)
+      // Each explore gives 5-20 ERGOLD, so 3 explores guarantees >= 15
+      await gameManager.connect(player1).explore(1);
+      await gameManager.connect(player1).explore(1);
+      await gameManager.connect(player1).explore(1);
+
+      const goldBal = await goldToken.balanceOf(player1.address);
+      expect(goldBal).to.be.greaterThanOrEqual(ethers.parseEther("10"));
+
+      await gameManager.connect(player1).rest(1);
+      const charAfter = await characterNFT.getCharacter(1);
+      expect(charAfter.hp).to.equal(charAfter.maxHp);
     });
   });
 
   describe("GameManager - Equipment", function () {
     beforeEach(async function () {
       await characterNFT.connect(player1).mintCharacter("Knight", { value: ethers.parseEther("0.01") });
-    });
-
-    it("should buy and equip items", async function () {
-      // Explore multiple times to gain gold
+      // Explore 5 times to earn gold (minimum 5*5=25 ERGOLD, max 5*20=100)
       for (let i = 0; i < 5; i++) {
         await gameManager.connect(player1).explore(1);
       }
+    });
 
+    it("should buy and equip items", async function () {
       const goldBal = await goldToken.balanceOf(player1.address);
-      if (goldBal >= ethers.parseEther("50")) {
-        await gameManager.connect(player1).buyItem(0); // Buy weapon
-        const itemCount = await itemNFT.getNextTokenId();
-        expect(itemCount).to.be.greaterThan(0);
+      // 5 explores guarantee at minimum 25 ERGOLD, but we need 50
+      // If not enough, do more explores (wait for energy regen)
+      // Instead, use a second player's explores to generate more gold for player1
+      // Actually, with 5 explores at 5-20 gold each, minimum is 25, max is 100
+      // We need to ensure we have enough: skip test cleanly if unlucky
+      if (goldBal < ethers.parseEther("50")) {
+        // Mine additional blocks so energy regenerates (10s per energy)
+        await ethers.provider.send("evm_increaseTime", [60]);
+        await ethers.provider.send("evm_mine", []);
+        // Explore 5 more times
+        for (let i = 0; i < 5; i++) {
+          await gameManager.connect(player1).explore(1);
+        }
       }
+
+      const finalGold = await goldToken.balanceOf(player1.address);
+      expect(finalGold).to.be.greaterThanOrEqual(ethers.parseEther("50"));
+
+      await gameManager.connect(player1).buyItem(0); // Buy weapon
+      const itemId = await itemNFT.getNextTokenId();
+      expect(itemId).to.be.greaterThan(0);
+
+      // Verify item exists and is owned by player
+      const itemOwner = await itemNFT.ownerOf(itemId);
+      expect(itemOwner).to.equal(player1.address);
+
+      // Equip the weapon
+      await gameManager.connect(player1).equipItem(1, itemId);
+      const char = await characterNFT.getCharacter(1);
+      expect(char.equippedWeapon).to.equal(itemId);
     });
   });
 
@@ -248,18 +286,96 @@ describe("EtherRealms", function () {
     });
   });
 
+  describe("Marketplace", function () {
+    beforeEach(async function () {
+      await characterNFT.connect(player1).mintCharacter("Seller", { value: ethers.parseEther("0.01") });
+      await characterNFT.connect(player2).mintCharacter("Buyer", { value: ethers.parseEther("0.01") });
+      // Explore to gain gold
+      for (let i = 0; i < 5; i++) {
+        await gameManager.connect(player1).explore(1);
+        await gameManager.connect(player2).explore(2);
+      }
+      // Ensure enough gold by advancing time and exploring more if needed
+      await ethers.provider.send("evm_increaseTime", [60]);
+      await ethers.provider.send("evm_mine", []);
+      for (let i = 0; i < 5; i++) {
+        await gameManager.connect(player1).explore(1);
+        await gameManager.connect(player2).explore(2);
+      }
+    });
+
+    it("should list and buy an item", async function () {
+      // Buy an item from shop
+      await gameManager.connect(player1).buyItem(0);
+      const itemId = await itemNFT.getNextTokenId();
+
+      // Approve and list on marketplace
+      await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+      await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+      // Check listing
+      const listing = await marketplace.getListing(1);
+      expect(listing.seller).to.equal(player1.address);
+      expect(listing.active).to.be.true;
+
+      // Player2 buys it
+      await marketplace.connect(player2).buyItem(1);
+      const newOwner = await itemNFT.ownerOf(itemId);
+      expect(newOwner).to.equal(player2.address);
+    });
+
+    it("should cancel a listing and return item", async function () {
+      await gameManager.connect(player1).buyItem(0);
+      const itemId = await itemNFT.getNextTokenId();
+
+      await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+      await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+      await marketplace.connect(player1).cancelListing(1);
+      const listing = await marketplace.getListing(1);
+      expect(listing.active).to.be.false;
+
+      const returnedOwner = await itemNFT.ownerOf(itemId);
+      expect(returnedOwner).to.equal(player1.address);
+    });
+
+    it("should not allow buying own listing", async function () {
+      await gameManager.connect(player1).buyItem(0);
+      const itemId = await itemNFT.getNextTokenId();
+
+      await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+      await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+      await expect(marketplace.connect(player1).buyItem(1))
+        .to.be.revertedWith("Marketplace: cannot buy own item");
+    });
+
+    it("should return active listings", async function () {
+      const count = await marketplace.getActiveListingCount();
+      expect(count).to.equal(0);
+    });
+  });
+
   describe("ItemNFT - Ownership History", function () {
     it("should track ownership changes", async function () {
       await characterNFT.connect(player1).mintCharacter("Trader1", { value: ethers.parseEther("0.01") });
-      // Explore to potentially get items
+      // Explore to earn gold
       for (let i = 0; i < 5; i++) {
         await gameManager.connect(player1).explore(1);
       }
-      const nextId = await itemNFT.getNextTokenId();
-      if (nextId > 0n) {
-        const history = await itemNFT.getOwnershipHistory(1);
-        expect(history.length).to.be.greaterThan(0);
+      await ethers.provider.send("evm_increaseTime", [60]);
+      await ethers.provider.send("evm_mine", []);
+      for (let i = 0; i < 5; i++) {
+        await gameManager.connect(player1).explore(1);
       }
+
+      // Buy an item to guarantee ownership history
+      await gameManager.connect(player1).buyItem(0);
+      const itemId = await itemNFT.getNextTokenId();
+
+      const history = await itemNFT.getOwnershipHistory(itemId);
+      expect(history.length).to.be.greaterThan(0);
+      expect(history[0].owner).to.equal(player1.address);
     });
   });
 });
