@@ -59,6 +59,17 @@ async function main() {
   await guildManager.setGameManager(gameManagerAddr);
   console.log("GuildManager gameManager set");
 
+  // 7. Deploy Marketplace
+  const Marketplace = await hre.ethers.getContractFactory("Marketplace");
+  const marketplace = await Marketplace.deploy(itemNFTAddr, goldTokenAddr);
+  await marketplace.waitForDeployment();
+  const marketplaceAddr = await marketplace.getAddress();
+  console.log("Marketplace deployed to:", marketplaceAddr);
+
+  // 8. Authorize Marketplace on GoldToken
+  await goldToken.setAuthorized(marketplaceAddr, true);
+  console.log("Marketplace authorized on GoldToken");
+
   console.log("\n--- Deployment Complete ---");
   console.log("Contract Addresses:");
   console.log(`  GoldToken:     ${goldTokenAddr}`);
@@ -66,6 +77,7 @@ async function main() {
   console.log(`  ItemNFT:       ${itemNFTAddr}`);
   console.log(`  GuildManager:  ${guildManagerAddr}`);
   console.log(`  GameManager:   ${gameManagerAddr}`);
+  console.log(`  Marketplace:   ${marketplaceAddr}`);
 
   // Write addresses to a JSON file for frontend
   const fs = require("fs");
@@ -75,6 +87,7 @@ async function main() {
     ItemNFT: itemNFTAddr,
     GuildManager: guildManagerAddr,
     GameManager: gameManagerAddr,
+    Marketplace: marketplaceAddr,
   };
   fs.writeFileSync(
     "frontend/src/contracts/addresses.json",

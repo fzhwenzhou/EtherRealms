@@ -78,7 +78,7 @@ describe("EtherRealms", function () {
     it("should only allow minter to mint", async function () {
       await expect(
         goldToken.connect(player1).mint(player1.address, ethers.parseEther("100"))
-      ).to.be.revertedWith("GoldToken: caller is not the minter");
+      ).to.be.revertedWith("GoldToken: caller is not authorized");
     });
   });
 

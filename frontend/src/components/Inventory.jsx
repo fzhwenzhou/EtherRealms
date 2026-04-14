@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ethers } from 'ethers';
 
 const RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const ITEM_TYPE_NAMES = ['Weapon', 'Armor', 'Potion'];
+const ITEM_COST = 50; // 50 ERGOLD
 
 function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance, demoMode, demoItems }) {
   const [items, setItems] = useState([]);
@@ -17,7 +19,8 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
     try {
       const nextId = Number(await contracts.itemNFT.getNextTokenId());
       const playerItems = [];
-      for (let i = 1; i <= nextId; i++) {
+      // nextId is the NEXT token to be minted, so valid IDs are 1..(nextId-1)
+      for (let i = 1; i < nextId; i++) {
         try {
           const owner = await contracts.itemNFT.ownerOf(i);
           if (owner.toLowerCase() === account.toLowerCase()) {
@@ -31,7 +34,7 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
             });
           }
         } catch {
-          // Burned or invalid
+          // Burned or invalid token - skip
         }
       }
       setItems(playerItems);
@@ -69,6 +72,12 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
 
   const handleBuy = (itemType) => {
     if (demoMode) { onAction(() => {}); return; }
+    // Check balance before calling contract to provide better error messages
+    const balance = parseFloat(goldBalance);
+    if (balance < ITEM_COST) {
+      showNotification(`Not enough gold! Need ${ITEM_COST} but you have ${balance.toFixed(0)}. Explore or fight monsters to earn more!`, 'error');
+      return;
+    }
     onAction(async () => {
       const tx = await contracts.gameManager.buyItem(itemType);
       showNotification('Purchasing item...');

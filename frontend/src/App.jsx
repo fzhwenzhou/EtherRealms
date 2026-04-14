@@ -6,6 +6,7 @@ import {
   GoldTokenABI,
   GameManagerABI,
   GuildManagerABI,
+  MarketplaceABI,
   CONTRACT_ADDRESSES,
 } from './contracts/config';
 import CharacterPanel from './components/CharacterPanel';
@@ -14,6 +15,7 @@ import WorldEvents from './components/WorldEvents';
 import Leaderboard from './components/Leaderboard';
 import Inventory from './components/Inventory';
 import GuildPanel from './components/GuildPanel';
+import Marketplace from './components/Marketplace';
 import Notification from './components/Notification';
 
 // ─── Demo Mode Data ───────────────────────────────────
@@ -155,7 +157,17 @@ function App() {
       const gameManager = new ethers.Contract(CONTRACT_ADDRESSES.GameManager, GameManagerABI.abi, sign);
       const guildManager = new ethers.Contract(CONTRACT_ADDRESSES.GuildManager, GuildManagerABI.abi, sign);
 
-      setContracts({ characterNFT, itemNFT, goldToken, gameManager, guildManager });
+      // Marketplace contract (may not be deployed yet)
+      let marketplace = null;
+      if (CONTRACT_ADDRESSES.Marketplace) {
+        try {
+          marketplace = new ethers.Contract(CONTRACT_ADDRESSES.Marketplace, MarketplaceABI.abi, sign);
+        } catch (e) {
+          console.warn('Marketplace contract not available:', e);
+        }
+      }
+
+      setContracts({ characterNFT, itemNFT, goldToken, gameManager, guildManager, marketplace });
       showNotification('Wallet connected to Sepolia testnet!');
     } catch (err) {
       showNotification(err.message || 'Failed to connect to Sepolia testnet', 'error');
@@ -330,6 +342,7 @@ function App() {
           <div className="tabs">
             <button className={`tab ${activeTab === 'actions' ? 'active' : ''}`} onClick={() => setActiveTab('actions')}>Actions</button>
             <button className={`tab ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>Inventory</button>
+            <button className={`tab ${activeTab === 'market' ? 'active' : ''}`} onClick={() => setActiveTab('market')}>Market</button>
             <button className={`tab ${activeTab === 'guild' ? 'active' : ''}`} onClick={() => setActiveTab('guild')}>Guild</button>
             <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>Leaderboard</button>
           </div>
@@ -349,6 +362,16 @@ function App() {
               contracts={contracts}
               account={account}
               charId={charId}
+              loading={loading}
+              onAction={handleAction}
+              showNotification={showNotification}
+              goldBalance={goldBalance}
+            />
+          )}
+          {activeTab === 'market' && (
+            <Marketplace
+              contracts={contracts}
+              account={account}
               loading={loading}
               onAction={handleAction}
               showNotification={showNotification}
