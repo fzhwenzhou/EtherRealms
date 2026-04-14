@@ -98,7 +98,6 @@ contract GameManager is Ownable {
     }
 
     // ─── Energy System ────────────────────────────────
-    // Fix me
     function getAvailableEnergy(uint256 charId) public view returns (uint8) {
         CharacterNFT.CharacterStats memory c = characterNFT.getCharacter(charId);
         uint256 elapsed = block.timestamp - c.lastActionTime;

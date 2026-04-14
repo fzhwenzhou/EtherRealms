@@ -15,7 +15,7 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
     try {
       const nextId = Number(await contracts.itemNFT.getNextTokenId());
       const playerItems = [];
-      // nextId is the NEXT token to be minted, so valid IDs are 1..(nextId-1)
+      // getNextTokenId() returns the last minted ID, so valid IDs are 1..nextId
       for (let i = 1; i <= nextId; i++) {
         try {
           const owner = await contracts.itemNFT.ownerOf(i);
