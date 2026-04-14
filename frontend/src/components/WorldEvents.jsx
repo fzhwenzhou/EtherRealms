@@ -3,14 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 const EVENT_CLASSES = ['explore', 'combat-win', 'combat-lose', 'item-drop', 'level-up', 'guild'];
 const EVENT_ICONS = ['🗺️', '⚔️', '💀', '✨', '⬆️', '🏰'];
 
-function WorldEvents({ contracts, demoMode, demoEvents }) {
+function WorldEvents({ contracts }) {
   const [events, setEvents] = useState([]);
 
   const loadEvents = useCallback(async () => {
-    if (demoMode) {
-      setEvents(demoEvents || []);
-      return;
-    }
     if (!contracts) return;
     try {
       const recentEvents = await contracts.gameManager.getRecentWorldEvents(20);
@@ -26,15 +22,13 @@ function WorldEvents({ contracts, demoMode, demoEvents }) {
     } catch (err) {
       console.error('Failed to load events:', err);
     }
-  }, [contracts, demoMode, demoEvents]);
+  }, [contracts]);
 
   useEffect(() => {
     loadEvents();
-    if (!demoMode) {
-      const interval = setInterval(loadEvents, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [loadEvents, demoMode]);
+    const interval = setInterval(loadEvents, 10000);
+    return () => clearInterval(interval);
+  }, [loadEvents]);
 
   const formatTime = (ts) => {
     const d = new Date(ts * 1000);

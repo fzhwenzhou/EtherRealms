@@ -44,7 +44,7 @@ function Marketplace({ contracts, account, loading, onAction, showNotification, 
     try {
       const nextId = Number(await contracts.itemNFT.getNextTokenId());
       const items = [];
-      for (let i = 1; i < nextId; i++) {
+      for (let i = 1; i <= nextId; i++) {
         try {
           const owner = await contracts.itemNFT.ownerOf(i);
           if (owner.toLowerCase() === account.toLowerCase()) {

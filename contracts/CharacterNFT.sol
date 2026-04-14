@@ -190,7 +190,7 @@ contract CharacterNFT is ERC721, Ownable {
             '<text x="150" y="65" text-anchor="middle" fill="#8b5cf6" font-size="14" font-family="sans-serif">Level ',
             Strings.toString(c.level),
             '</text>',
-            _generateCharSvgBody(c),
+            _generateCharSvgBody(c, tokenId),
             '</svg>'
         );
 
@@ -210,7 +210,7 @@ contract CharacterNFT is ERC721, Ownable {
         return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
     }
 
-    function _generateCharSvgBody(CharacterStats memory c) internal pure returns (string memory) {
+    function _generateCharSvgBody(CharacterStats memory c, uint256 tokenId) internal pure returns (string memory) {
         uint256 hpPct = (uint256(c.hp) * 200) / uint256(c.maxHp);
         return string.concat(
             // Character pixel art body
@@ -228,7 +228,7 @@ contract CharacterNFT is ERC721, Ownable {
             '<text x="40" y="320" fill="#ef4444" font-size="13" font-family="sans-serif">STR: ', Strings.toString(c.strength), '</text>',
             '<text x="160" y="320" fill="#3b82f6" font-size="13" font-family="sans-serif">DEF: ', Strings.toString(c.defense), '</text>',
             '<text x="40" y="345" fill="#f59e0b" font-size="13" font-family="sans-serif">XP: ', Strings.toString(c.xp), '</text>',
-            '<text x="40" y="370" fill="#94a3b8" font-size="11" font-family="sans-serif">Token #', Strings.toString(0), '</text>'
+            '<text x="40" y="370" fill="#94a3b8" font-size="11" font-family="sans-serif">Token #', Strings.toString(tokenId), '</text>'
         );
     }
 

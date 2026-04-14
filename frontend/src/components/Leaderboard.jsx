@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-function Leaderboard({ contracts, demoMode, demoLeaders }) {
+function Leaderboard({ contracts }) {
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const loadLeaderboard = useCallback(async () => {
-    if (demoMode) {
-      setLeaders(demoLeaders || []);
-      return;
-    }
     if (!contracts) return;
     setLoading(true);
     try {
@@ -25,7 +21,7 @@ function Leaderboard({ contracts, demoMode, demoLeaders }) {
       console.error('Failed to load leaderboard:', err);
     }
     setLoading(false);
-  }, [contracts, demoMode, demoLeaders]);
+  }, [contracts]);
 
   useEffect(() => {
     loadLeaderboard();
@@ -71,11 +67,9 @@ function Leaderboard({ contracts, demoMode, demoLeaders }) {
           </tbody>
         </table>
       )}
-      {!demoMode && (
-        <button className="btn btn-sm btn-primary" onClick={loadLeaderboard} style={{ marginTop: 12 }}>
-          Refresh
-        </button>
-      )}
+      <button className="btn btn-sm btn-primary" onClick={loadLeaderboard} style={{ marginTop: 12 }}>
+        Refresh
+      </button>
     </div>
   );
 }

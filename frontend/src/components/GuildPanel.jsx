@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 
-function GuildPanel({ contracts, account, character, loading, onAction, showNotification, demoMode, demoGuild }) {
+function GuildPanel({ contracts, account, character, loading, onAction, showNotification }) {
   const [guild, setGuild] = useState(null);
   const [guildName, setGuildName] = useState('');
   const [joinId, setJoinId] = useState('');
@@ -10,13 +10,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
   const [donateAmount, setDonateAmount] = useState('');
 
   const loadGuild = useCallback(async () => {
-    if (demoMode) {
-      setGuild(demoGuild || null);
-      setProposals([
-        { id: 1, description: 'Organize a guild dungeon raid this weekend', proposer: '0x70997...79C8', votesFor: 2, votesAgainst: 0, deadline: Math.floor(Date.now()/1000) + 86400, executed: false },
-      ]);
-      return;
-    }
     if (!contracts || !account || !character) return;
     try {
       const guildId = await contracts.guildManager.playerGuild(account);
@@ -58,7 +51,7 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
     } catch (err) {
       console.error('Failed to load guild:', err);
     }
-  }, [contracts, account, character, demoMode, demoGuild]);
+  }, [contracts, account, character]);
 
   useEffect(() => {
     loadGuild();
@@ -66,7 +59,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
 
   const handleCreate = () => {
     if (!guildName.trim()) return;
-    if (demoMode) { onAction(() => {}); setGuildName(''); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.createGuild(guildName);
       showNotification('Creating guild...');
@@ -79,7 +71,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
 
   const handleJoin = () => {
     if (!joinId) return;
-    if (demoMode) { onAction(() => {}); setJoinId(''); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.joinGuild(parseInt(joinId));
       showNotification('Joining guild...');
@@ -91,7 +82,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
   };
 
   const handleLeave = () => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.leaveGuild();
       showNotification('Leaving guild...');
@@ -103,7 +93,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
 
   const handleDonate = () => {
     if (!donateAmount) return;
-    if (demoMode) { onAction(() => {}); setDonateAmount(''); return; }
     onAction(async () => {
       const amount = ethers.parseEther(donateAmount);
       const tx = await contracts.gameManager.donateToGuild(amount);
@@ -117,7 +106,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
 
   const handleCreateProposal = () => {
     if (!proposalText.trim()) return;
-    if (demoMode) { onAction(() => {}); setProposalText(''); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.createProposal(proposalText);
       showNotification('Creating proposal...');
@@ -129,7 +117,6 @@ function GuildPanel({ contracts, account, character, loading, onAction, showNoti
   };
 
   const handleVote = (proposalId, support) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.voteOnProposal(proposalId, support);
       showNotification('Voting...');

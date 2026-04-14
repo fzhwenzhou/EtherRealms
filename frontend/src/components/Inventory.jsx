@@ -5,22 +5,18 @@ const RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const ITEM_TYPE_NAMES = ['Weapon', 'Armor', 'Potion'];
 const ITEM_COST = 50; // 50 ERGOLD
 
-function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance, demoMode, demoItems }) {
+function Inventory({ contracts, account, charId, loading, onAction, showNotification, goldBalance }) {
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
   const loadItems = useCallback(async () => {
-    if (demoMode) {
-      setItems(demoItems || []);
-      return;
-    }
     if (!contracts || !account) return;
     setLoadingItems(true);
     try {
       const nextId = Number(await contracts.itemNFT.getNextTokenId());
       const playerItems = [];
       // nextId is the NEXT token to be minted, so valid IDs are 1..(nextId-1)
-      for (let i = 1; i < nextId; i++) {
+      for (let i = 1; i <= nextId; i++) {
         try {
           const owner = await contracts.itemNFT.ownerOf(i);
           if (owner.toLowerCase() === account.toLowerCase()) {
@@ -42,14 +38,13 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
       console.error('Failed to load items:', err);
     }
     setLoadingItems(false);
-  }, [contracts, account, demoMode, demoItems]);
+  }, [contracts, account]);
 
   useEffect(() => {
     loadItems();
   }, [loadItems]);
 
   const handleEquip = (itemId) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.equipItem(charId, itemId);
       showNotification('Equipping item...');
@@ -60,7 +55,6 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
   };
 
   const handleUsePotion = (itemId) => {
-    if (demoMode) { onAction(() => {}); return; }
     onAction(async () => {
       const tx = await contracts.gameManager.usePotion(charId, itemId);
       showNotification('Using potion...');
@@ -71,7 +65,6 @@ function Inventory({ contracts, account, charId, loading, onAction, showNotifica
   };
 
   const handleBuy = (itemType) => {
-    if (demoMode) { onAction(() => {}); return; }
     // Check balance before calling contract to provide better error messages
     const balance = parseFloat(goldBalance);
     if (balance < ITEM_COST) {

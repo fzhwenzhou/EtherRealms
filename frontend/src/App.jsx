@@ -175,7 +175,7 @@ function App() {
   };
 
   const loadCharacter = useCallback(async () => {
-    // if (demoMode || !contracts || !account) return;
+    if (!contracts || !account) return;
     try {
       const id = await contracts.characterNFT.playerCharacter(account);
       const numId = Number(id);

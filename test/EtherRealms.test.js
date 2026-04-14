@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("EtherRealms", function () {
-  let goldToken, characterNFT, itemNFT, guildManager, gameManager;
+  let goldToken, characterNFT, itemNFT, guildManager, gameManager, marketplace;
   let owner, player1, player2, player3;
 
   beforeEach(async function () {
@@ -33,6 +33,13 @@ describe("EtherRealms", function () {
     await characterNFT.setGameManager(gmAddr);
     await itemNFT.setGameManager(gmAddr);
     await guildManager.setGameManager(gmAddr);
+
+    const Marketplace = await ethers.getContractFactory("Marketplace");
+    marketplace = await Marketplace.deploy(
+      await itemNFT.getAddress(),
+      await goldToken.getAddress()
+    );
+    await goldToken.setAuthorized(await marketplace.getAddress(), true);
   });
 
   describe("CharacterNFT", function () {
@@ -245,6 +252,81 @@ describe("EtherRealms", function () {
       const [ids, names, levels, xps, owners] = await gameManager.leaderboard();
       expect(ids.length).to.be.greaterThan(0);
       expect(names[0]).to.be.a("string");
+    });
+  });
+
+  describe("Marketplace", function () {
+    beforeEach(async function () {
+      await characterNFT.connect(player1).mintCharacter("Seller", { value: ethers.parseEther("0.01") });
+      await characterNFT.connect(player2).mintCharacter("Buyer", { value: ethers.parseEther("0.01") });
+      // Explore to gain gold and items
+      for (let i = 0; i < 5; i++) {
+        await gameManager.connect(player1).explore(1);
+        await gameManager.connect(player2).explore(2);
+      }
+    });
+
+    it("should list and buy an item", async function () {
+      const goldBal = await goldToken.balanceOf(player1.address);
+      if (goldBal >= ethers.parseEther("50")) {
+        // Buy an item from shop
+        await gameManager.connect(player1).buyItem(0);
+        const itemId = await itemNFT.getNextTokenId();
+
+        // Approve and list on marketplace
+        await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+        await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+        // Check listing
+        const listing = await marketplace.getListing(1);
+        expect(listing.seller).to.equal(player1.address);
+        expect(listing.active).to.be.true;
+
+        // Player2 buys it
+        const buyer2Gold = await goldToken.balanceOf(player2.address);
+        if (buyer2Gold >= ethers.parseEther("30")) {
+          await marketplace.connect(player2).buyItem(1);
+          const newOwner = await itemNFT.ownerOf(itemId);
+          expect(newOwner).to.equal(player2.address);
+        }
+      }
+    });
+
+    it("should cancel a listing and return item", async function () {
+      const goldBal = await goldToken.balanceOf(player1.address);
+      if (goldBal >= ethers.parseEther("50")) {
+        await gameManager.connect(player1).buyItem(0);
+        const itemId = await itemNFT.getNextTokenId();
+
+        await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+        await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+        await marketplace.connect(player1).cancelListing(1);
+        const listing = await marketplace.getListing(1);
+        expect(listing.active).to.be.false;
+
+        const owner = await itemNFT.ownerOf(itemId);
+        expect(owner).to.equal(player1.address);
+      }
+    });
+
+    it("should not allow buying own listing", async function () {
+      const goldBal = await goldToken.balanceOf(player1.address);
+      if (goldBal >= ethers.parseEther("50")) {
+        await gameManager.connect(player1).buyItem(0);
+        const itemId = await itemNFT.getNextTokenId();
+
+        await itemNFT.connect(player1).approve(await marketplace.getAddress(), itemId);
+        await marketplace.connect(player1).listItem(itemId, ethers.parseEther("30"));
+
+        await expect(marketplace.connect(player1).buyItem(1))
+          .to.be.revertedWith("Marketplace: cannot buy own item");
+      }
+    });
+
+    it("should return active listings", async function () {
+      const count = await marketplace.getActiveListingCount();
+      expect(count).to.equal(0);
     });
   });
 

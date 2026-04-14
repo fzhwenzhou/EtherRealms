@@ -150,7 +150,8 @@ etherrealms/
 │   ├── ItemNFT.sol
 │   ├── GoldToken.sol
 │   ├── GuildManager.sol
-│   └── GameManager.sol
+│   ├── GameManager.sol
+│   └── Marketplace.sol
 ├── test/                # Hardhat test suite (24 tests)
 │   └── EtherRealms.test.js
 ├── scripts/             # Deployment scripts
@@ -165,11 +166,10 @@ etherrealms/
 │   │   │   ├── Leaderboard.jsx
 │   │   │   ├── Inventory.jsx
 │   │   │   ├── GuildPanel.jsx
+│   │   │   ├── Marketplace.jsx
 │   │   │   └── Notification.jsx
 │   │   └── contracts/   # ABIs and addresses
 │   └── index.html
-├── report/              # Final report
-│   └── EtherRealms_Final_Report.docx
 ├── hardhat.config.js
 ├── package.json
 └── README.md
